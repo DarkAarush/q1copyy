@@ -90,7 +90,7 @@ async def get_daily_quiz_limit(chat_type):
         return 10  # Daily limit for groups/supergroups
 
 @retry_on_failure
-async def send_quiz_logic(context: ContextTypes.DEFAULT_TYPE, chat_id: str):
+async def send_quiz_logic(context: CallbackContext, chat_id: str):
     """
     Core logic for sending a quiz to the specified chat.
     """
