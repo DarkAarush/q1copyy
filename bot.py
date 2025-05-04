@@ -403,30 +403,28 @@ def resume_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     update.message.reply_text("Quiz resumed successfully.")
     
-async def restart_active_quizzes(context: ContextTypes.DEFAULT_TYPE):
-    """Restarts active quizzes by fetching from the database."""
-    active_quizzes_cursor = get_active_quizzes()  # Fetch active quizzes cursor
-    active_quizzes = await active_quizzes_cursor.to_list(length=None)  # Convert to list
+async def restart_active_quizzes(application):
+    active_quizzes = get_active_quizzes()  # This returns an AsyncIOMotorCursor
 
-    for quiz in active_quizzes:
+    async for quiz in active_quizzes:  # Use async for to iterate over the cursor
         chat_id = quiz["chat_id"]
         interval = quiz["data"].get("interval", 30)
         used_questions = quiz["data"].get("used_questions", [])
 
         # Check if bot is still a member of the chat
         try:
-            await context.bot.get_chat_member(chat_id, context.bot.id)
-        except TelegramError:
+            await application.bot.get_chat_member(chat_id, application.bot.id)  # Await the async call
+        except Exception:
             logger.warning(f"Bot is no longer a member of chat {chat_id}. Removing from active quizzes.")
-            save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
+            await save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
             continue
 
         logger.info(f"Restarting quiz for chat_id: {chat_id} with interval {interval} seconds.")
-        context.job_queue.run_repeating(
+        application.job_queue.run_repeating(
             send_quiz,
             interval=interval,
             first=0,
-            context={"chat_id": chat_id, "used_questions": used_questions}
+            data={"chat_id": chat_id, "used_questions": used_questions}
         )
 
 def check_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -510,8 +508,12 @@ def main():
 
     # # Schedule async tasks
     # asyncio.run(restart_active_quizzes(application))
-    # Schedule the asynchronous restart of active quizzes
-    application.job_queue.run_once(lambda context: asyncio.run(restart_active_quizzes(context)), 0)
+   # Schedule the restart_active_quizzes coroutine
+    async def initialize_quizzes():
+        await restart_active_quizzes(application)
+
+    application.job_queue.run_once(lambda _: application.create_task(initialize_quizzes()), 0)
+
 
     # Start the bot
     application.run_polling()
