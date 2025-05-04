@@ -97,7 +97,7 @@ def is_user_admin(update: Update, user_id: int):
     chat_member = update.effective_chat.get_member(user_id)
     return chat_member.status in [ChatMember.ADMINISTRATOR, ChatMember.CREATOR]
 
-def button(update: Update, context: CallbackContext):
+def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     query = update.callback_query
     query.answer()
@@ -294,7 +294,7 @@ def button(update: Update, context: CallbackContext):
         query.edit_message_text(text="Welcome to the Quiz Bot! Please choose an option:", reply_markup=reply_markup)
 
 
-def set_interval(update: Update, context: CallbackContext):
+def set_interval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
 
     if not context.args or not context.args[0].isdigit():
@@ -325,7 +325,7 @@ def set_interval(update: Update, context: CallbackContext):
         start_quiz(update, context)
 
 
-def start_quiz(update: Update, context: CallbackContext):
+def start_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
 
@@ -352,7 +352,7 @@ def start_quiz(update: Update, context: CallbackContext):
     # Schedule subsequent quizzes at the specified interval
     context.job_queue.run_repeating(send_quiz, interval=interval, first=interval, context={"chat_id": chat_id, "used_questions": []})
 
-def stop_quiz(update: Update, context: CallbackContext):
+def stop_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
 
@@ -369,7 +369,7 @@ def stop_quiz(update: Update, context: CallbackContext):
     else:
         update.message.reply_text("No active quiz to stop.")
 
-def pause_quiz(update: Update, context: CallbackContext):
+def pause_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
 
@@ -387,7 +387,7 @@ def pause_quiz(update: Update, context: CallbackContext):
 
     update.message.reply_text("Quiz paused successfully.")
 
-def resume_quiz(update: Update, context: CallbackContext):
+def resume_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
 
@@ -429,12 +429,12 @@ async def restart_active_quizzes(context: ContextTypes.DEFAULT_TYPE):
             context={"chat_id": chat_id, "used_questions": used_questions}
         )
 
-def check_stats(update: Update, context: CallbackContext):
+def check_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     score = get_user_score(user_id)
     update.message.reply_text(f"Your current score is: {score} points.")
 
-def show_leaderboard(update: Update, context: CallbackContext):
+def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
 
     # Send initial loading message
@@ -477,7 +477,7 @@ def show_leaderboard(update: Update, context: CallbackContext):
 
     update.message.reply_text(message, parse_mode="Markdown")
 
-def next_quiz(update: Update, context: CallbackContext):
+def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
 
