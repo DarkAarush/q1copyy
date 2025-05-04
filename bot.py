@@ -1,8 +1,7 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatMember
-from telegram.error import TelegramError
 from telegram.ext import (
-    Updater, CommandHandler, CallbackQueryHandler, CallbackContext, PollAnswerHandler
+    Application, CommandHandler, CallbackQueryHandler, ContextTypes, PollAnswerHandler
 )
 from chat_data_handler import load_chat_data, save_chat_data, add_served_chat, add_served_user, get_active_quizzes
 from quiz_handler import send_quiz, send_quiz_immediately,  handle_poll_answer, load_quizzes
@@ -404,20 +403,22 @@ def resume_quiz(update: Update, context: CallbackContext):
 
     update.message.reply_text("Quiz resumed successfully.")
     
-async def restart_active_quizzes(context: CallbackContext):
-    active_quizzes = get_active_quizzes()  # This returns an AsyncIOMotorCursor
+async def restart_active_quizzes(context: ContextTypes.DEFAULT_TYPE):
+    """Restarts active quizzes by fetching from the database."""
+    active_quizzes_cursor = get_active_quizzes()  # Fetch active quizzes cursor
+    active_quizzes = await active_quizzes_cursor.to_list(length=None)  # Convert to list
 
-    async for quiz in active_quizzes:  # Use async for to iterate over the cursor
+    for quiz in active_quizzes:
         chat_id = quiz["chat_id"]
         interval = quiz["data"].get("interval", 30)
         used_questions = quiz["data"].get("used_questions", [])
 
         # Check if bot is still a member of the chat
         try:
-            context.bot.get_chat_member(chat_id, context.bot.id)  # Removed `await` here
+            await context.bot.get_chat_member(chat_id, context.bot.id)
         except TelegramError:
             logger.warning(f"Bot is no longer a member of chat {chat_id}. Removing from active quizzes.")
-            await save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
+            save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
             continue
 
         logger.info(f"Restarting quiz for chat_id: {chat_id} with interval {interval} seconds.")
@@ -427,7 +428,6 @@ async def restart_active_quizzes(context: CallbackContext):
             first=0,
             context={"chat_id": chat_id, "used_questions": used_questions}
         )
-
 
 def check_stats(update: Update, context: CallbackContext):
     user_id = str(update.effective_user.id)
@@ -491,35 +491,63 @@ def next_quiz(update: Update, context: CallbackContext):
     update.message.reply_text("Next quiz has been sent!")
 
 
-
-
-
-
 def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-    
-    dp.add_handler(CommandHandler("start", start_command))
-    dp.add_handler(CommandHandler("setinterval", set_interval))
-    dp.add_handler(CommandHandler("stopquiz", stop_quiz))
-    dp.add_handler(CommandHandler("pause", pause_quiz))
-    dp.add_handler(CommandHandler("resume", resume_quiz))
-    dp.add_handler(CommandHandler("next", next_quiz))
-    dp.add_handler(CallbackQueryHandler(button))
-    dp.add_handler(PollAnswerHandler(handle_poll_answer))
-    dp.add_handler(CommandHandler("leaderboard", show_leaderboard))
-    dp.add_handler(CommandHandler("broadcast", broadcast))
-    dp.add_handler(CommandHandler("stats", check_stats))
+    # Create the Application instance
+    application = Application.builder().token(TOKEN).build()
 
+    # Add handlers
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("setinterval", set_interval))
+    application.add_handler(CommandHandler("stopquiz", stop_quiz))
+    application.add_handler(CommandHandler("pause", pause_quiz))
+    application.add_handler(CommandHandler("resume", resume_quiz))
+    application.add_handler(CommandHandler("next", next_quiz))
+    application.add_handler(CallbackQueryHandler(button))
+    application.add_handler(PollAnswerHandler(handle_poll_answer))
+    application.add_handler(CommandHandler("leaderboard", show_leaderboard))
+    application.add_handler(CommandHandler("broadcast", broadcast))
+    application.add_handler(CommandHandler("stats", check_stats))
 
+    # # Schedule async tasks
+    # asyncio.run(restart_active_quizzes(application))
+    # Schedule the asynchronous restart of active quizzes
+    application.job_queue.run_once(lambda context: asyncio.run(restart_active_quizzes(context)), 0)
 
-    
-    updater.start_polling()
-     # Schedule restart_active_quizzes asynchronously
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(restart_active_quizzes(updater))
+    # Start the bot
+    application.run_polling()
 
-    updater.idle()
 
 if __name__ == '__main__':
     main()
+
+
+
+
+# def main():
+#     updater = Updater(TOKEN, use_context=True)
+#     dp = updater.dispatcher
+    
+#     dp.add_handler(CommandHandler("start", start_command))
+#     dp.add_handler(CommandHandler("setinterval", set_interval))
+#     dp.add_handler(CommandHandler("stopquiz", stop_quiz))
+#     dp.add_handler(CommandHandler("pause", pause_quiz))
+#     dp.add_handler(CommandHandler("resume", resume_quiz))
+#     dp.add_handler(CommandHandler("next", next_quiz))
+#     dp.add_handler(CallbackQueryHandler(button))
+#     dp.add_handler(PollAnswerHandler(handle_poll_answer))
+#     dp.add_handler(CommandHandler("leaderboard", show_leaderboard))
+#     dp.add_handler(CommandHandler("broadcast", broadcast))
+#     dp.add_handler(CommandHandler("stats", check_stats))
+
+
+
+    
+#     updater.start_polling()
+#      # Schedule restart_active_quizzes asynchronously
+#     loop = asyncio.get_event_loop()
+#     loop.run_until_complete(restart_active_quizzes(updater))
+
+#     updater.idle()
+
+# if __name__ == '__main__':
+#     main()
