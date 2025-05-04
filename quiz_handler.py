@@ -200,7 +200,7 @@ async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if selected_option == correct_option_id:
         await add_score(user_id, 1)
 
-async def send_quiz_immediately(context: ContextTypes.DEFAULT_TYPE, chat_id: str):
+async def send_quiz_immediately(context: CallbackContext, chat_id: str):
     """
     Send a quiz immediately to the specified chat.
     """
