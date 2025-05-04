@@ -179,7 +179,7 @@ async def send_quiz(context: CallbackContext):
     chat_id = context.job.context["chat_id"]
     await send_quiz_logic(context, chat_id)
 
-async handle_poll_answer(update: Update, context: CallbackContext):
+async def handle_poll_answer(update: Update, context: CallbackContext):
     """
     Handle user answers to polls and update leaderboard scores.
     """
