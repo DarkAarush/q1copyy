@@ -12,6 +12,9 @@ from datetime import datetime
 from pymongo import MongoClient
 import threading
 import time
+from motor.motor_asyncio import AsyncIOMotorClient
+import asyncio
+
 # Enable logging
 from bot_logging import logger
 
@@ -20,17 +23,27 @@ ADMIN_ID = 5050578106  # Replace with your actual Telegram user ID
 LOG_GROUP_ID = -1001902619247  # Replace with your actual log group chat ID
 
 # MongoDB connection
-# MONGO_URI = "mongodb+srv://asrushfig:2003@cluster0.6vdid.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 MONGO_URI = "mongodb+srv://2004:2005@cluster0.6vdid.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-
-# MONGO_URI = "mongodb+srv://tigerbundle282:tTaRXh353IOL9mj2@testcookies.2elxf.mongodb.net/?retryWrites=true&w=majority&appName=Testcookies"
-client = MongoClient(MONGO_URI)
+client = AsyncIOMotorClient(MONGO_URI)
 db = client["telegram_bot"]
 quizzes_sent_collection = db["quizzes_sent"]
 
 
+# Enable logging
+from bot_logging import logger
 
-def log_user_or_group(update: Update, context: CallbackContext):
+TOKEN = "7183336129:AAGBlp0cqb9gjIRj0CdXRhTR4-b9QMDVAaM"
+ADMIN_ID = 5050578106  # Replace with your actual Telegram user ID
+LOG_GROUP_ID = -1001902619247  # Replace with your actual log group chat ID
+
+# MongoDB connection
+MONGO_URI = "mongodb+srv://2004:2005@cluster0.6vdid.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+client = AsyncIOMotorClient(MONGO_URI)
+db = client["telegram_bot"]
+quizzes_sent_collection = db["quizzes_sent"]
+
+
+async def log_user_or_group(update: Update, context: CallbackContext):
     chat = update.effective_chat
     user = update.effective_user
 
@@ -47,41 +60,39 @@ def log_user_or_group(update: Update, context: CallbackContext):
         )
 
     logger.info(f"Logging message: {log_message}")
-    context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_message)
+    await context.bot.send_message(chat_id=LOG_GROUP_ID, text=log_message)
 
-def start_command(update: Update, context: CallbackContext):
+
+
+async def start_command(update: Update, context: CallbackContext):
     chat_id = str(update.effective_chat.id)
     user_id = str(update.effective_user.id)
 
     # Log the user or group
-    log_user_or_group(update, context)
+    await log_user_or_group(update, context)
 
     # Register the chat and user for broadcasting
-    add_served_chat(chat_id)
-    add_served_user(user_id)
+    await add_served_chat(chat_id)
+    await add_served_user(user_id)
 
     # Inline buttons for main menu
     keyboard = [
-        [
-            InlineKeyboardButton("Add in Your Group +", url=f"https://t.me/PYQ_Quizbot?startgroup=true"),   
-        ],
+        [InlineKeyboardButton("Add in Your Group +", url=f"https://t.me/PYQ_Quizbot?startgroup=true")],
         [InlineKeyboardButton("Start PYQ Quizzes", callback_data='start_quiz')],
         [
             InlineKeyboardButton("📊 Leaderboard", callback_data='show_leaderboard'),
             InlineKeyboardButton("📈 My Score", callback_data='show_stats')
         ],
-        [InlineKeyboardButton("Commands", callback_data='show_commands')], 
+        [InlineKeyboardButton("Commands", callback_data='show_commands')],
         [InlineKeyboardButton("Download all Edition Book", url=f"https://t.me/+ZSZUt_eBmmhiMDM1")]
-        
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     # Send welcome message with main menu buttons
-    update.message.reply_text(
-        "*Pinnacle 7th Edition*\n\nWelcome to the Pinnacle 7th edition Quiz Bot! This is a Quiz Bot made by *Pinnacle Publication.*\n\nThis can ask two Exams PYQ's.\n\n*➠ SSC *\n*➠ RRB*\n\nChoose the option for proceed further :",
+    await update.message.reply_text(
+        "*Pinnacle 7th Edition*\n\nWelcome to the Pinnacle 7th edition Quiz Bot! This is a Quiz Bot made by *Pinnacle Publication.*\n\nThis can ask two Exams PYQ's.\n\n*➠ SSC *\n*➠ RRB*\n\nChoose [...]",
         reply_markup=reply_markup, parse_mode="Markdown"
     )
-
 
 def is_user_admin(update: Update, user_id: int):
     chat_member = update.effective_chat.get_member(user_id)
@@ -393,19 +404,20 @@ def resume_quiz(update: Update, context: CallbackContext):
 
     update.message.reply_text("Quiz resumed successfully.")
     
-def restart_active_quizzes(context: CallbackContext):
+async def restart_active_quizzes(context: CallbackContext):
     active_quizzes = get_active_quizzes()
-    for quiz in active_quizzes:
+
+    async for quiz in active_quizzes:  # Use async for to handle AsyncIOMotorCursor
         chat_id = quiz["chat_id"]
         interval = quiz["data"].get("interval", 30)
         used_questions = quiz["data"].get("used_questions", [])
 
         # Check if bot is still a member of the chat
         try:
-            context.bot.get_chat_member(chat_id, context.bot.id)
+            await context.bot.get_chat_member(chat_id, context.bot.id)
         except TelegramError:
             logger.warning(f"Bot is no longer a member of chat {chat_id}. Removing from active quizzes.")
-            save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
+            await save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
             continue
 
         logger.info(f"Restarting quiz for chat_id: {chat_id} with interval {interval} seconds.")
@@ -415,7 +427,7 @@ def restart_active_quizzes(context: CallbackContext):
             first=0,
             context={"chat_id": chat_id, "used_questions": used_questions}
         )
-        
+
 def check_stats(update: Update, context: CallbackContext):
     user_id = str(update.effective_user.id)
     score = get_user_score(user_id)
@@ -502,7 +514,9 @@ def main():
 
     
     updater.start_polling()
-    updater.job_queue.run_once(restart_active_quizzes, 0)
+     # Schedule restart_active_quizzes asynchronously
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(restart_active_quizzes(updater))
 
     updater.idle()
 
