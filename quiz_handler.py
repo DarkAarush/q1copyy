@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, CallbackContext
 from chat_data_handler import load_chat_data, save_chat_data
 from leaderboard_handler import add_score
 import random
