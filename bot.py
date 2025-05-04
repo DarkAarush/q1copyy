@@ -42,7 +42,7 @@ db = client["telegram_bot"]
 quizzes_sent_collection = db["quizzes_sent"]
 
 
-async def log_user_or_group(update: Update, context: CallbackContext):
+async def log_user_or_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     user = update.effective_user
 
@@ -63,7 +63,7 @@ async def log_user_or_group(update: Update, context: CallbackContext):
 
 
 
-async def start_command(update: Update, context: CallbackContext):
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     user_id = str(update.effective_user.id)
 
