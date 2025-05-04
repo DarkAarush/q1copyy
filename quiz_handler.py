@@ -172,14 +172,14 @@ async def send_quiz_logic(context: CallbackContext, chat_id: str):
         # Retry sending the next quiz
         await send_quiz_logic(context, chat_id)
 
-async def send_quiz(context: ContextTypes.DEFAULT_TYPE):
+async def send_quiz(context: CallbackContext):
     """
     Asynchronous wrapper to send a quiz to the chat.
     """
     chat_id = context.job.context["chat_id"]
     await send_quiz_logic(context, chat_id)
 
-async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async handle_poll_answer(update: Update, context: CallbackContext):
     """
     Handle user answers to polls and update leaderboard scores.
     """
