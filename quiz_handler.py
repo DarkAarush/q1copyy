@@ -1,7 +1,7 @@
 import logging
 import asyncio
 from telegram import Update
-from telegram.ext import ContextTypes, CallbackContext
+from telegram.ext import ContextTypes
 from chat_data_handler import load_chat_data, save_chat_data
 from leaderboard_handler import add_score
 import random
@@ -90,7 +90,7 @@ async def get_daily_quiz_limit(chat_type):
         return 10  # Daily limit for groups/supergroups
 
 @retry_on_failure
-async def send_quiz_logic(context: CallbackContext, chat_id: str):
+async def send_quiz_logic(context: ContextTypes.DEFAULT_TYPE, chat_id: str):
     """
     Core logic for sending a quiz to the specified chat.
     """
@@ -172,14 +172,14 @@ async def send_quiz_logic(context: CallbackContext, chat_id: str):
         # Retry sending the next quiz
         await send_quiz_logic(context, chat_id)
 
-async def send_quiz(context: CallbackContext):
+async def send_quiz(context: ContextTypes.DEFAULT_TYPE):
     """
     Asynchronous wrapper to send a quiz to the chat.
     """
-    chat_id = context.job.context["chat_id"]
+    chat_id = context.job.data["chat_id"]  # Updated to use data instead of context
     await send_quiz_logic(context, chat_id)
 
-async def handle_poll_answer(update: Update, context: CallbackContext):
+async def handle_poll_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle user answers to polls and update leaderboard scores.
     """
@@ -200,7 +200,7 @@ async def handle_poll_answer(update: Update, context: CallbackContext):
     if selected_option == correct_option_id:
         await add_score(user_id, 1)
 
-async def send_quiz_immediately(context: CallbackContext, chat_id: str):
+async def send_quiz_immediately(context: ContextTypes.DEFAULT_TYPE, chat_id: str):
     """
     Send a quiz immediately to the specified chat.
     """
