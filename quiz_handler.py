@@ -25,7 +25,11 @@ used_quizzes_collection = db["used_quizzes"]
 message_status_collection = db["message_status"]
 
 # Async Redis connection
-redis_client = redis.StrictRedis(host="localhost", port=6379, db=0, decode_responses=False)
+try:
+    redis_client = redis.StrictRedis(host="127.0.0.1", port=6379, db=0, decode_responses=False)
+except Exception as e:
+    logger.error(f"Failed to connect to Redis: {e}")
+    redis_client = None  # Set to None if Redis is unavailable
 
 # Helper functions for compression and serialization
 def compress_data(data):
@@ -63,10 +67,14 @@ async def load_quizzes(category):
     """
     Load quizzes from file or cache using asynchronous file I/O and caching.
     """
-    cache_key = f"quizzes:{category}"
-    cached_data = await redis_client.get(cache_key)
-    if cached_data:
-        return decompress_data(cached_data)
+    if redis_client:
+        try:
+            cache_key = f"quizzes:{category}"
+            cached_data = await redis_client.get(cache_key)
+            if cached_data:
+                return decompress_data(cached_data)
+        except Exception as e:
+            logger.error(f"Redis error while loading quizzes: {e}")
 
     # Fallback to file read if not cached
     file_path = f"quizzes/{category}.json"
@@ -74,7 +82,11 @@ async def load_quizzes(category):
         async with aiofiles.open(file_path, mode="r") as f:
             quizzes = await f.read()
             quizzes = json.loads(quizzes)
-            await redis_client.set(cache_key, compress_data(quizzes), ex=3600)  # Cache for 1 hour
+            if redis_client:
+                try:
+                    await redis_client.set(cache_key, compress_data(quizzes), ex=3600)  # Cache for 1 hour
+                except Exception as e:
+                    logger.error(f"Redis error while caching quizzes: {e}")
             return quizzes
     except FileNotFoundError:
         logger.error(f"Quiz file for category '{category}' not found.")
