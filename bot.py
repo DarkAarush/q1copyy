@@ -405,16 +405,16 @@ def resume_quiz(update: Update, context: CallbackContext):
     update.message.reply_text("Quiz resumed successfully.")
     
 async def restart_active_quizzes(context: CallbackContext):
-    active_quizzes = get_active_quizzes()
+    active_quizzes = get_active_quizzes()  # This returns an AsyncIOMotorCursor
 
-    async for quiz in active_quizzes:  # Use async for to handle AsyncIOMotorCursor
+    async for quiz in active_quizzes:  # Use async for to iterate over the cursor
         chat_id = quiz["chat_id"]
         interval = quiz["data"].get("interval", 30)
         used_questions = quiz["data"].get("used_questions", [])
 
         # Check if bot is still a member of the chat
         try:
-            await context.bot.get_chat_member(chat_id, context.bot.id)
+            context.bot.get_chat_member(chat_id, context.bot.id)  # Removed `await` here
         except TelegramError:
             logger.warning(f"Bot is no longer a member of chat {chat_id}. Removing from active quizzes.")
             await save_chat_data(chat_id, {"active": False})  # Mark chat as inactive
@@ -427,6 +427,7 @@ async def restart_active_quizzes(context: CallbackContext):
             first=0,
             context={"chat_id": chat_id, "used_questions": used_questions}
         )
+
 
 def check_stats(update: Update, context: CallbackContext):
     user_id = str(update.effective_user.id)
