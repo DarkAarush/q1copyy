@@ -17,7 +17,7 @@ import asyncio
 from bot_logging import logger
 
 # Bot token and admin details
-TOKEN = "7183336129:AAGBlp0cqb9gjIRj0CdXRhTR4-b9QMDVAaM"
+TOKEN = "7183336129:AAGC7Cj0fXjMQzROUXMZHnb0pyXQQqneMic"
 ADMIN_ID = 5050578106
 LOG_GROUP_ID = -1001902619247
 
