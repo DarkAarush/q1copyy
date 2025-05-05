@@ -738,24 +738,20 @@ def check_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #     update.message.reply_text(message, parse_mode="Markdown")
 async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-
-    # Send an initial loading message
-    loading_message = await context.bot.send_message(chat_id=chat_id, text="Leaderboard is loading...")
+    logger.info("Fetching leaderboard...")
 
     try:
-        # Fetch the top scores asynchronously
-        top_scores = await get_top_scores(20)
+        loading_message = await context.bot.send_message(chat_id=chat_id, text="Leaderboard is loading...")
 
+        # Fetch scores
+        top_scores = await get_top_scores(20)
         if not top_scores:
-            # If no scores are found, delete the loading message and notify the user
+            logger.info("No scores found for leaderboard.")
             await context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
             await update.message.reply_text("🏆 No scores yet! Start playing to appear on the leaderboard.")
             return
 
-        # Delete the loading message
-        await context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
-
-        # Prepare the leaderboard message
+        # Prepare leaderboard message
         message = "🏆 *Quiz Leaderboard* 🏆\n\n"
         medals = ["🥇", "🥈", "🥉"]
 
@@ -770,17 +766,23 @@ async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
             rank_display = medals[rank - 1] if rank <= 3 else f"{rank}."
             message += f"{rank_display}  *{username}* - {score} Points\n\n"
 
-        # Send the prepared leaderboard message
+        # Send leaderboard message
+        await context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
         await update.message.reply_text(message, parse_mode="Markdown")
 
     except Exception as e:
-        # Log the error and notify the user
         logger.error(f"Error while loading leaderboard: {e}")
-        await context.bot.edit_message_text(
-            chat_id=chat_id,
-            message_id=loading_message.message_id,
-            text="An error occurred while loading the leaderboard. Please try again later."
-        )
+        await update.message.reply_text("An error occurred while loading the leaderboard. Please try again later.")
+
+async def get_top_scores(limit=20):
+    try:
+        # Replace this with your actual database query logic
+        scores = await db.scores.find().sort("score", -1).limit(limit).to_list(length=limit)
+        return [(score["user_id"], score["score"]) for score in scores]
+    except Exception as e:
+        logger.error(f"Error fetching top scores: {e}")
+        return []
+
 def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
