@@ -684,49 +684,93 @@ def check_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     score = get_user_score(user_id)
     update.message.reply_text(f"Your current score is: {score} points.")
 
-def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.message.chat_id
+# def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     chat_id = update.message.chat_id
 
-    # Send initial loading message
-    loading_message = context.bot.send_message(chat_id=chat_id, text="Leaderboard is loading...")
+#     # Send initial loading message
+#     loading_message = context.bot.send_message(chat_id=chat_id, text="Leaderboard is loading...")
 
-    # Send loading updates in a separate thread
-    def send_loading_messages(message_id):
-        for i in range(2, 4):
-            time.sleep(1)  # Wait for 1 second before sending the next message
-            context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Leaderboard is loading...{i}")
+#     # Send loading updates in a separate thread
+#     def send_loading_messages(message_id):
+#         for i in range(2, 4):
+#             time.sleep(1)  # Wait for 1 second before sending the next message
+#             context.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Leaderboard is loading...{i}")
 
-    loading_thread = threading.Thread(target=send_loading_messages, args=(loading_message.message_id,))
-    loading_thread.start()
+#     loading_thread = threading.Thread(target=send_loading_messages, args=(loading_message.message_id,))
+#     loading_thread.start()
 
-    # Fetch and display the leaderboard
-    top_scores = get_top_scores(20)
-    loading_thread.join()  # Wait for the loading messages to finish
+#     # Fetch and display the leaderboard
+#     top_scores = get_top_scores(20)
+#     loading_thread.join()  # Wait for the loading messages to finish
 
-    if not top_scores:
-        context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
-        update.message.reply_text("🏆 No scores yet! Start playing to appear on the leaderboard.")
-        return
+#     if not top_scores:
+#         context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
+#         update.message.reply_text("🏆 No scores yet! Start playing to appear on the leaderboard.")
+#         return
 
-    # Delete the loading message
-    context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
+#     # Delete the loading message
+#     context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
 
-    # Prepare and send the leaderboard message
-    message = "🏆 *Quiz Leaderboard* 🏆\n\n"
-    medals = ["🥇", "🥈", "🥉"]
+#     # Prepare and send the leaderboard message
+#     message = "🏆 *Quiz Leaderboard* 🏆\n\n"
+#     medals = ["🥇", "🥈", "🥉"]
 
-    for rank, (user_id, score) in enumerate(top_scores, start=1):
-        try:
-            user = context.bot.get_chat(int(user_id))
-            username = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name or ''}"
-        except Exception:
-            username = f"User {user_id}"
+#     for rank, (user_id, score) in enumerate(top_scores, start=1):
+#         try:
+#             user = context.bot.get_chat(int(user_id))
+#             username = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name or ''}"
+#         except Exception:
+#             username = f"User {user_id}"
 
-        rank_display = medals[rank - 1] if rank <= 3 else f"{rank}."
-        message += f"{rank_display}  *{username}* - {score} Points\n\n"
+#         rank_display = medals[rank - 1] if rank <= 3 else f"{rank}."
+#         message += f"{rank_display}  *{username}* - {score} Points\n\n"
 
-    update.message.reply_text(message, parse_mode="Markdown")
+#     update.message.reply_text(message, parse_mode="Markdown")
+async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
 
+    # Send an initial loading message
+    loading_message = await context.bot.send_message(chat_id=chat_id, text="Leaderboard is loading...")
+
+    try:
+        # Fetch the top scores asynchronously
+        top_scores = await get_top_scores(20)
+
+        if not top_scores:
+            # If no scores are found, delete the loading message and notify the user
+            await context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
+            await update.message.reply_text("🏆 No scores yet! Start playing to appear on the leaderboard.")
+            return
+
+        # Delete the loading message
+        await context.bot.delete_message(chat_id=chat_id, message_id=loading_message.message_id)
+
+        # Prepare the leaderboard message
+        message = "🏆 *Quiz Leaderboard* 🏆\n\n"
+        medals = ["🥇", "🥈", "🥉"]
+
+        for rank, (user_id, score) in enumerate(top_scores, start=1):
+            try:
+                # Fetch user details asynchronously
+                user = await context.bot.get_chat(int(user_id))
+                username = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name or ''}"
+            except Exception:
+                username = f"User {user_id}"
+
+            rank_display = medals[rank - 1] if rank <= 3 else f"{rank}."
+            message += f"{rank_display}  *{username}* - {score} Points\n\n"
+
+        # Send the prepared leaderboard message
+        await update.message.reply_text(message, parse_mode="Markdown")
+
+    except Exception as e:
+        # Log the error and notify the user
+        logger.error(f"Error while loading leaderboard: {e}")
+        await context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=loading_message.message_id,
+            text="An error occurred while loading the leaderboard. Please try again later."
+        )
 def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     chat_data = load_chat_data(chat_id)
