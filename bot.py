@@ -41,15 +41,16 @@ client = AsyncIOMotorClient(MONGO_URI)
 db = client["telegram_bot"]
 quizzes_sent_collection = db["quizzes_sent"]
 
-async def test_connection():
-    client = AsyncIOMotorClient("your-mongo-uri")
+async def test_mongo_connection():
+    from motor.motor_asyncio import AsyncIOMotorClient
+
+    client = AsyncIOMotorClient(MONGO_URI)
     try:
         await client.admin.command("ping")
-        print("Database connection successful.")
+        print("MongoDB connection successful.")
     except Exception as e:
-        print(f"Database connection failed: {e}")
-
-asyncio.run(test_connection())
+        print(f"MongoDB connection failed: {e}")
+        raise
 
 async def log_user_or_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
@@ -797,6 +798,12 @@ def next_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     # Create the Application instance
     application = Application.builder().token(TOKEN).build()
+    # Create an AsyncIO event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Test MongoDB connection
+    loop.run_until_complete(test_mongo_connection())
 
     # Add handlers
     application.add_handler(CommandHandler("start", start_command))
