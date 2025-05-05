@@ -41,6 +41,15 @@ client = AsyncIOMotorClient(MONGO_URI)
 db = client["telegram_bot"]
 quizzes_sent_collection = db["quizzes_sent"]
 
+async def test_connection():
+    client = AsyncIOMotorClient("your-mongo-uri")
+    try:
+        await client.admin.command("ping")
+        print("Database connection successful.")
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+
+asyncio.run(test_connection())
 
 async def log_user_or_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
@@ -751,10 +760,10 @@ async def show_leaderboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         for rank, (user_id, score) in enumerate(top_scores, start=1):
             try:
-                # Fetch user details asynchronously
                 user = await context.bot.get_chat(int(user_id))
                 username = f"@{user.username}" if user.username else f"{user.first_name} {user.last_name or ''}"
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error fetching user data for user_id {user_id}: {e}")
                 username = f"User {user_id}"
 
             rank_display = medals[rank - 1] if rank <= 3 else f"{rank}."
