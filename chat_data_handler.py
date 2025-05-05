@@ -2,6 +2,10 @@ import os
 from motor.motor_asyncio import AsyncIOMotorClient  # Async MongoDB client
 import redis.asyncio as redis  # Async Redis client
 import json
+import logging
+
+# Logger setup
+logger = logging.getLogger(__name__)
 
 # Async MongoDB connection
 MONGO_URI = "mongodb+srv://2004:2005@cluster0.6vdid.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -11,8 +15,12 @@ chat_data_collection = db["chat_data"]
 served_chats_collection = db["served_chats"]
 served_users_collection = db["served_users"]
 
-# Async Redis connection
-redis_client = redis.StrictRedis(host="localhost", port=6379, db=0, decode_responses=True)
+# Async Redis connection with retry and fallback
+try:
+    redis_client = redis.StrictRedis(host="127.0.0.1", port=6379, db=0, decode_responses=True)
+    logger.info("Connected to Redis successfully.")
+except Exception as e:
+    logger.error(f"Failed to connect to Redis
 
 async def load_chat_data(chat_id=None):
     """
