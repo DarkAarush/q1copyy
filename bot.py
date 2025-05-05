@@ -74,34 +74,46 @@ async def log_user_or_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send the main menu with options when the /start command is used."""
     chat_id = str(update.effective_chat.id)
     user_id = str(update.effective_user.id)
 
-    # Log the user or group
-    await log_user_or_group(update, context)
+    try:
+        # Log the user or group
+        await log_user_or_group(update, context)
 
-    # Register the chat and user for broadcasting
-    await add_served_chat(chat_id)
-    await add_served_user(user_id)
+        # Register the chat and user for broadcasting
+        await add_served_chat(chat_id)
+        await add_served_user(user_id)
 
-    # Inline buttons for main menu
-    keyboard = [
-        [InlineKeyboardButton("Add in Your Group +", url=f"https://t.me/PYQ_Quizbot?startgroup=true")],
-        [InlineKeyboardButton("Start PYQ Quizzes", callback_data='start_quiz')],
-        [
-            InlineKeyboardButton("📊 Leaderboard", callback_data='show_leaderboard'),
-            InlineKeyboardButton("📈 My Score", callback_data='show_stats')
-        ],
-        [InlineKeyboardButton("Commands", callback_data='show_commands')],
-        [InlineKeyboardButton("Download all Edition Book", url=f"https://t.me/+ZSZUt_eBmmhiMDM1")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+        # Inline buttons for the main menu
+        keyboard = [
+            [InlineKeyboardButton("Add in Your Group +", url=f"https://t.me/PYQ_Quizbot?startgroup=true")],
+            [InlineKeyboardButton("Start PYQ Quizzes", callback_data='start_quiz')],
+            [
+                InlineKeyboardButton("📊 Leaderboard", callback_data='show_leaderboard'),
+                InlineKeyboardButton("📈 My Score", callback_data='show_stats')
+            ],
+            [InlineKeyboardButton("Commands", callback_data='show_commands')],
+            [InlineKeyboardButton("Download all Edition Book", url=f"https://t.me/+ZSZUt_eBmmhiMDM1")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Send welcome message with main menu buttons
-    await update.message.reply_text(
-        "*Pinnacle 7th Edition*\n\nWelcome to the Pinnacle 7th edition Quiz Bot! This is a Quiz Bot made by *Pinnacle Publication.*\n\nThis can ask two Exams PYQ's.\n\n*➠ SSC *\n*➠ RRB*\n\nChoose [...]",
-        reply_markup=reply_markup, parse_mode="Markdown"
-    )
+        # Send welcome message with main menu buttons
+        await update.message.reply_text(
+            "*Pinnacle 7th Edition*\n\n"
+            "Welcome to the Pinnacle 7th Edition Quiz Bot! This bot is developed by *Pinnacle Publication.*\n\n"
+            "It allows you to take PYQ quizzes for two exams:\n\n"
+            "*➠ SSC*\n"
+            "*➠ RRB*\n\n"
+            "Choose an option below to get started:",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+
+    except Exception as e:
+        logger.error(f"Error in start_command: {e}")
+        await update.message.reply_text("An error occurred while starting the bot. Please try again later.")
 
 def is_user_admin(update: Update, user_id: int):
     chat_member = update.effective_chat.get_member(user_id)
